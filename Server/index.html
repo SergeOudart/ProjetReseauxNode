@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style/style.css">
+    <title>Chat Websocket</title>
+</head>
+<body>
+    <header>
+        <h1>Chat par STOMP</h1>
+    </header>
+    <div id="connection">
+        <h2>Nom d'utilisateur</h2>
+        <input id="username" type="text" name="username">
+        <button onclick="connexion()">Connexion</button>
+    </div>
+    <div>
+        <h2>Message</h2>
+        <input id="userMessage" type="text" name="message">
+        <button onclick="envoie()">Envoyer</button>
+    </div>
+    <div>
+        <h2>Chat</h2>
+        <textarea id="chatArea" readonly></textarea>
+        <button onclick="deconnexion()">Déconnexion</button>
+    </div>
+
+    <script>
+        function connexion() {
+            globalThis.socket = new WebSocket("ws://localhost:8999/stomp", "v10.stomp");
+
+            socket.addEventListener('open', (event) => {
+            
+            });
+
+            socket.addEventListener('message', function (event) {
+                const textarea = document.getElementById('chatArea');
+                textarea.value += '\n' + event.data;
+                console.log(event.data);
+            })
+            /*var frame = "CONNECT\n"
+                + "login: websockets\n";
+                + "passcode: rabbitmq\n";
+                + "nickname: anonymous\n";
+                + "\n\n\0";
+            socket.send(frame);*/
+        }
+
+        function messageHttp() {
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", "ws://localhost:8999/stomp");
+            xhr.setRequestHeader('Sec-WebSocket-Protocol', 'v10.stomp');
+            xhr.send();
+        }
+
+        function envoie() {
+            let message = document.getElementById('userMessage').value;
+            socket.send(message);
+        
+        }
+
+        function deconnexion() {
+            const textarea = document.getElementById('chatArea');
+            textarea.value = 'You are disconnected from the chat';
+            socket.close();
+        }
+    </script>
+</body>
+</html>
