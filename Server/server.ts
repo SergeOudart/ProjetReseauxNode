@@ -2,107 +2,124 @@ import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
 import { parse } from 'url';
+import * as Str from '@supercharge/strings';
 
 const app = express();
 
 const server = http.createServer(app);
 
 const wss = new WebSocket.Server({server});
-const clientsChat1=[];
-const clientsChat2=[];
-const clientsChat3=[];
+const clientsChat1= new Map();
+const clientsChat2= new Map();
+const clientsChat3= new Map();
 
-function subscription(ws, message, location) {
-    
-    switch (location.pathname) {
+function subscription(ws, message, location, id) {
+    switch (location) {
         case '/chat1':
-            clientsChat1.push(ws);
+            clientsChat1.set(ws, id);
             ws.send('you subscribed to chat 1 with ');
             break;
         case '/chat2':
-            clientsChat2.push(ws);
+            clientsChat2.set(ws, id);
             ws.send('you subscribed to chat 2 with ');
             break;
         case '/chat3':
-            clientsChat3.push(ws);
+            clientsChat3.set(ws, id);
             ws.send('you subscribed to chat 3 with ');
             break;
         default:
+            ws.send(`Désolé, ce topic n'éxiste pas`);
             break;
     }
 }
 
 function unsubscribe(ws, message, location) {
-    switch (location.pathname) {
+    switch (location) {
         case '/chat1':
-            for(var i = 0; i < clientsChat1.length; i++) {
-                if (clientsChat1[i] === ws) {
-                    clientsChat1.splice(i, 1);
-                }
-            }
+            clientsChat1.delete(ws);
             ws.send('you unsubscribed of chat 1 with ');
             break;
         case '/chat2':
-            for(var i = 0; i < clientsChat2.length; i++) {
-                if (clientsChat2[i] === ws) {
-                    clientsChat2.splice(i, 1);
-                }
-            }
+            clientsChat2.delete(ws);
             ws.send('you unsubscribed of chat 2 with ');
             break;
         case '/chat3':
-            for(var i = 0; i < clientsChat3.length; i++) {
-                if (clientsChat3[i] === ws) {
-                    clientsChat3.splice(i, 1);
-                }
-            }
+            clientsChat3.delete(ws);
             ws.send('you unsubscribed of chat 3 with ');
+            clientsChat3.forEach((value, key) => {
+                console.log(value);
+            });
             break;
         default:
+            ws.send(`Désolé, vous n'êtes pas inscrit à ce topic`);
             break;
     }
+
+}
+
+function sendMessage(ws, message, location) {
+    var arrayMessage = message.substring(message.indexOf("\n") + 1);
+    for (var i = 0; i<2; i++) {
+        arrayMessage = arrayMessage.substring(arrayMessage.indexOf("\n") + 1);
+    }
+    arrayMessage = arrayMessage.substring(arrayMessage.lastIndexOf("\n") + 1, -1 );
+
+
+    if ((location == '/chat1') && (clientsChat1.has(ws))) {
+        clientsChat1.forEach((value, key) => {
+            key.send(arrayMessage);
+        });
+    } else if ((location == '/chat2') && (clientsChat2.has(ws))) {
+        clientsChat2.forEach((value, key) => {
+            key.send(arrayMessage);
+        });
+    } else if ((location == '/chat3') && (clientsChat3.has(ws))) {
+        clientsChat3.forEach((value, key) => {
+            key.send(arrayMessage);
+        });
+    } else {
+        ws.send(`Impossible d'envoyer votre message, vous n'êtes pas insrit à ce topic`);
+    }
+}
+
+function getQueue(lines) {
+    if (lines[0] == 'SEND') {
+        return lines[1].replace('destination:', '');
+    } else if (lines[0] == 'SUBSCRIBE') {
+        return lines[2].replace('destination:', '');
+    }
+        
 }
 
 wss.on('connection', (ws: WebSocket, req) => {
 
     console.log("New client connected with ip : " + req.socket.remoteAddress);
-    const location = parse(req.url, true);
 
     ws.on('message', (message: string) => {
 
         console.log('received :\n' + message);
-        const location = parse(req.url, true);
         
         if (message.toString().startsWith('SUBSCRIBE')) {
             /*
-            Ajouter les parametres nécessaires pas encore utilisés
+            Ajouter ^@ à la fin de la requête et traiter cet indicateur (fin de requête)
             */
-            subscription(ws, message, location);
+            const stringReq = Str(message).lines();
+            const location = getQueue(stringReq);
+            subscription(ws, message, location, stringReq[1].replace('id:', ''));
         }
         if (message.toString().startsWith('UNSUBSCRIBE')) {
+            /**
+             * Supprimer le client connecté en vérifiant que l'id est le même
+             */
+            const location = getQueue(Str(message).lines());
             unsubscribe(ws, message, location);
         }
         if (message.toString().startsWith('SEND')) { 
-            /*
-            A améliorer : 
-            utiliser tous les parametres necessaire de la frame SEND
-            vérifier que le sender a bien subscribe au topic avant envoie
-            envoyer le message au bon topic grâce aux listes
-            */
+            const location = getQueue(Str(message).lines());
             var stringMessage = message.toString();
-            stringMessage = stringMessage.substring(stringMessage.indexOf("\n") + 1);
-            stringMessage = stringMessage.substring(stringMessage.lastIndexOf("\n") + 1, -1 );
-            if (location.pathname == '/chat1') {
-                clientsChat1.forEach(element => {
-                    element.send(stringMessage);
-                });
-            }
-        }
-
-        wss.clients.forEach(function(client) {
-            //client.send(message.toString());
-            });
-        });
+            sendMessage(ws, stringMessage, location);
+        }            
+    });
 
 });
 
