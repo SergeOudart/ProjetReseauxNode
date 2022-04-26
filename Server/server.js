@@ -51,23 +51,23 @@ function unsubscribe(ws, message, location) {
             break;
     }
 }
-function sendMessage(ws, message, location) {
+function sendMessage(ws, message, location, type) {
     var arrayMessage = message.substring(message.indexOf("\n") + 1);
     for (var i = 0; i < 2; i++) {
         arrayMessage = arrayMessage.substring(arrayMessage.indexOf("\n") + 1);
     }
     arrayMessage = arrayMessage.substring(arrayMessage.lastIndexOf("\n") + 1, -1);
-    if ((location == '/chat1') && (clientsChat1.has(ws))) {
+    if ((location == '/chat1') && (clientsChat1.has(ws)) && (type == 'text/plain')) {
         clientsChat1.forEach(function (value, key) {
             key.send(arrayMessage);
         });
     }
-    else if ((location == '/chat2') && (clientsChat2.has(ws))) {
+    else if ((location == '/chat2') && (clientsChat2.has(ws)) && (type == 'text/plain')) {
         clientsChat2.forEach(function (value, key) {
             key.send(arrayMessage);
         });
     }
-    else if ((location == '/chat3') && (clientsChat3.has(ws))) {
+    else if ((location == '/chat3') && (clientsChat3.has(ws)) && (type == 'text/plain')) {
         clientsChat3.forEach(function (value, key) {
             key.send(arrayMessage);
         });
@@ -84,6 +84,9 @@ function getQueue(lines) {
         return lines[2].replace('destination:', '');
     }
 }
+function getType(lines) {
+    return lines[2].replace('content-type:', '');
+}
 wss.on('connection', function (ws, req) {
     console.log("New client connected with ip : " + req.socket.remoteAddress);
     ws.on('message', function (message) {
@@ -97,13 +100,17 @@ wss.on('connection', function (ws, req) {
             subscription(ws, message, location_1, stringReq[1].replace('id:', ''));
         }
         if (message.toString().startsWith('UNSUBSCRIBE')) {
+            /**
+             * Supprimer le client connecté en vérifiant que l'id est le même
+             */
             var location_2 = getQueue(Str(message).lines());
             unsubscribe(ws, message, location_2);
         }
         if (message.toString().startsWith('SEND')) {
             var location_3 = getQueue(Str(message).lines());
             var stringMessage = message.toString();
-            sendMessage(ws, stringMessage, location_3);
+            var type = getType(Str(message).lines());
+            sendMessage(ws, stringMessage, location_3, type);
         }
     });
 });

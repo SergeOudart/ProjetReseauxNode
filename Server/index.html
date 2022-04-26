@@ -48,17 +48,9 @@
             socket.send(frame);*/
         }
 
-        function messageHttp() {
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", "ws://localhost:8999/stomp");
-            xhr.setRequestHeader('Sec-WebSocket-Protocol', 'v10.stomp');
-            xhr.send();
-        }
-
         function envoie() {
             let message = document.getElementById('userMessage').value;
             socket.send(message);
-        
         }
 
         function deconnexion() {

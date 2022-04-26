@@ -57,7 +57,7 @@ function unsubscribe(ws, message, location) {
 
 }
 
-function sendMessage(ws, message, location) {
+function sendMessage(ws, message, location, type) {
     var arrayMessage = message.substring(message.indexOf("\n") + 1);
     for (var i = 0; i<2; i++) {
         arrayMessage = arrayMessage.substring(arrayMessage.indexOf("\n") + 1);
@@ -65,15 +65,15 @@ function sendMessage(ws, message, location) {
     arrayMessage = arrayMessage.substring(arrayMessage.lastIndexOf("\n") + 1, -1 );
 
 
-    if ((location == '/chat1') && (clientsChat1.has(ws))) {
+    if ((location == '/chat1') && (clientsChat1.has(ws)) && (type == 'text/plain')) {
         clientsChat1.forEach((value, key) => {
             key.send(arrayMessage);
         });
-    } else if ((location == '/chat2') && (clientsChat2.has(ws))) {
+    } else if ((location == '/chat2') && (clientsChat2.has(ws)) && (type == 'text/plain')) {
         clientsChat2.forEach((value, key) => {
             key.send(arrayMessage);
         });
-    } else if ((location == '/chat3') && (clientsChat3.has(ws))) {
+    } else if ((location == '/chat3') && (clientsChat3.has(ws)) && (type == 'text/plain')) {
         clientsChat3.forEach((value, key) => {
             key.send(arrayMessage);
         });
@@ -87,8 +87,11 @@ function getQueue(lines) {
         return lines[1].replace('destination:', '');
     } else if (lines[0] == 'SUBSCRIBE') {
         return lines[2].replace('destination:', '');
-    }
-        
+    }   
+}
+
+function getType(lines) {
+    return lines[2].replace('content-type:', '');
 }
 
 wss.on('connection', (ws: WebSocket, req) => {
@@ -100,9 +103,6 @@ wss.on('connection', (ws: WebSocket, req) => {
         console.log('received :\n' + message);
         
         if (message.toString().startsWith('SUBSCRIBE')) {
-            /*
-            Ajouter ^@ à la fin de la requête et traiter cet indicateur (fin de requête)
-            */
             const stringReq = Str(message).lines();
             const location = getQueue(stringReq);
             subscription(ws, message, location, stringReq[1].replace('id:', ''));
@@ -117,7 +117,8 @@ wss.on('connection', (ws: WebSocket, req) => {
         if (message.toString().startsWith('SEND')) { 
             const location = getQueue(Str(message).lines());
             var stringMessage = message.toString();
-            sendMessage(ws, stringMessage, location);
+            const type = getType(Str(message).lines());
+            sendMessage(ws, stringMessage, location, type);
         }            
     });
 
