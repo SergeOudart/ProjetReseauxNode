@@ -115,6 +115,9 @@ wss.on('connection', (ws: WebSocket, req) => {
             unsubscribe(ws, message, location);
         }
         if (message.toString().startsWith('SEND')) { 
+            /**
+             * Les messages renvoyés aux autres utilisateurs doivent utiliser la frame MESSAGE du server
+             */
             const location = getQueue(Str(message).lines());
             var stringMessage = message.toString();
             const type = getType(Str(message).lines());
