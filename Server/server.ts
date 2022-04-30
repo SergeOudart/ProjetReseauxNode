@@ -33,6 +33,24 @@ function subscription(ws, message, location, id) {
     }
 }
 
+function disconnect(ws){
+    ws.on('close', () => {
+        clientsChat1.delete(ws);
+        clientsChat2.delete(ws);
+        clientsChat3.delete(ws);
+    })
+    ws.close();
+
+}
+
+function error(ws, message,receipt_id,content_type,content_length){
+    var msg = message.split("\n");
+
+
+}
+
+
+
 function unsubscribe(ws, message, location) {
     switch (location) {
         case '/chat1':
@@ -57,29 +75,42 @@ function unsubscribe(ws, message, location) {
 
 }
 
+function body(message, subscriptionId, messageId){
+    const stringReq = Str(message).lines();
+    var frame = "MESSAGE\n"
+                + `subscription: ${subscriptionId}\n`
+                + `messageid: ${messageId}\n`
+                + `destination: ${getQueue2(stringReq)}\n`
+                + "content-type: text/plain"
+                + "\n\n\0";
+    
+    return frame;
+
+}
+
+
 function sendMessage(ws, message, location, type) {
-    var arrayMessage = message.substring(message.indexOf("\n") + 1);
-    for (var i = 0; i<2; i++) {
-        arrayMessage = arrayMessage.substring(arrayMessage.indexOf("\n") + 1);
-    }
-    arrayMessage = arrayMessage.substring(arrayMessage.lastIndexOf("\n") + 1, -1 );
+    var messageId = Math.floor(Math.random() * 1000);
 
-
-    if ((location == '/chat1') && (clientsChat1.has(ws)) && (type == 'text/plain')) {
+    if(clientsChat1.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat1'))){
         clientsChat1.forEach((value, key) => {
-            key.send(arrayMessage);
+            const frame = body(message, value, messageId);
+            key.send(frame);
         });
-    } else if ((location == '/chat2') && (clientsChat2.has(ws)) && (type == 'text/plain')) {
+    }
+     else if (clientsChat2.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat2'))) {
         clientsChat2.forEach((value, key) => {
-            key.send(arrayMessage);
+            const frame = body(message, value, messageId);
+            key.send(frame);
         });
-    } else if ((location == '/chat3') && (clientsChat3.has(ws)) && (type == 'text/plain')) {
+    } else if (clientsChat3.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat3'))) {
         clientsChat3.forEach((value, key) => {
-            key.send(arrayMessage);
+            const frame = body(message, value, messageId);
+            key.send(frame);
         });
     } else {
         ws.send(`Impossible d'envoyer votre message, vous n'êtes pas insrit à ce topic`);
-    }
+}
 }
 
 function getQueue(lines) {
@@ -90,8 +121,20 @@ function getQueue(lines) {
     }   
 }
 
+function testQueue(lines){
+    return lines[2].toString().replace('destination:', '');
+}
+
+function getQueue2(lines){
+    return lines[1].toString().replace('destination:', '');
+
+}
+
 function getType(lines) {
-    return lines[2].replace('content-type:', '');
+    return lines[2].toString().replace('content-type:', '');
+}
+function getReceiptId(lines){
+    return lines[1].toString().replace('receipt-id:','');
 }
 
 wss.on('connection', (ws: WebSocket, req) => {
@@ -100,11 +143,12 @@ wss.on('connection', (ws: WebSocket, req) => {
 
     ws.on('message', (message: string) => {
 
-        console.log('received :\n' + message);
+        //console.log('received :\n' + message);
         
         if (message.toString().startsWith('SUBSCRIBE')) {
             const stringReq = Str(message).lines();
-            const location = getQueue(stringReq);
+            const location = testQueue(stringReq);
+            console.log(stringReq[1].replace('id:',''));
             subscription(ws, message, location, stringReq[1].replace('id:', ''));
         }
         if (message.toString().startsWith('UNSUBSCRIBE')) {
@@ -118,11 +162,21 @@ wss.on('connection', (ws: WebSocket, req) => {
             /**
              * Les messages renvoyés aux autres utilisateurs doivent utiliser la frame MESSAGE du server
              */
-            const location = getQueue(Str(message).lines());
+            const location = getQueue2(Str(message).lines());
+            console.log(location);
             var stringMessage = message.toString();
             const type = getType(Str(message).lines());
+            console.log(type);
             sendMessage(ws, stringMessage, location, type);
-        }            
+        }  
+        if(message.toString().startsWith('DISCONNECT')){
+            const receipt_id = getReceiptId(message);
+            if(ws)
+            disconnect(ws);
+        }
+        if(message.toString().startsWith('ERROR')){
+            
+        }    
     });
 
 });
