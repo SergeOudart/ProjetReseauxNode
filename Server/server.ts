@@ -12,6 +12,7 @@ const wss = new WebSocket.Server({server});
 const clientsChat1= new Map();
 const clientsChat2= new Map();
 const clientsChat3= new Map();
+const listChatDispo = ["/chat1", "/chat2", "/chat3"];
 
 function subscription(ws, message, location, id) {
     switch (location) {
@@ -33,6 +34,8 @@ function subscription(ws, message, location, id) {
     }
 }
 
+//TODO Effectuer la vérification des receipt
+
 function disconnect(ws){
     ws.on('close', () => {
         clientsChat1.delete(ws);
@@ -43,10 +46,44 @@ function disconnect(ws){
 
 }
 
-function error(ws, message,receipt_id,content_type,content_length){
-    var msg = message.split("\n");
+/**
+ * TODO Envoyer les frame ERROR en fonction de l'erreur trigger
+ * @param ws 
+ * @param message 
+ * @param queue 
+ * @returns 
+ */
 
+function error(ws, message, queue){
+    var msg = message.toString().split("\n");
+    var verifFrame = false;
+    switch (msg[0].toString()) {
+        case "SEND":
+            verifFrame = msg[1].includes("destination:") && listChatDispo.includes(queue) && msg[2].toString() == "content-type:text/plain" && message.toString().includes("^@");
+        break;
 
+        case "SUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
+            verifFrame = msg[1].includes("id:") && msg[2].includes("destination:") && listChatDispo.includes(queue) && message.toString().includes("^@");
+        break;
+
+        case "UNSUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
+            if (msg[1].includes("id:")) {
+                var id = msg[1].replace("id:", "");
+            }
+            
+            if (clientsChat1.get(ws) == id || clientsChat2.get(ws) == id || clientsChat3.get(ws) == id) {
+                verifFrame = true;
+            }
+        break;
+
+        case "DISCONNECT":
+
+        break;
+    
+        default:
+            break;
+    }
+    return verifFrame;
 }
 
 
@@ -64,9 +101,6 @@ function unsubscribe(ws, message, location) {
         case '/chat3':
             clientsChat3.delete(ws);
             ws.send('you unsubscribed of chat 3 with ');
-            clientsChat3.forEach((value, key) => {
-                console.log(value);
-            });
             break;
         default:
             ws.send(`Désolé, vous n'êtes pas inscrit à ce topic`);
@@ -74,13 +108,16 @@ function unsubscribe(ws, message, location) {
     }
 
 }
+/**
+ * TODO Ajouter le message à envoyer dans la frame LOL
+ */
 
 function body(message, subscriptionId, messageId){
     const stringReq = Str(message).lines();
     var frame = "MESSAGE\n"
                 + `subscription: ${subscriptionId}\n`
                 + `messageid: ${messageId}\n`
-                + `destination: ${getQueue2(stringReq)}\n`
+                + `destination: ${getQueueSend(stringReq)}\n`
                 + "content-type: text/plain"
                 + "\n\n\0";
     
@@ -109,7 +146,13 @@ function sendMessage(ws, message, location, type) {
             key.send(frame);
         });
     } else {
-        ws.send(`Impossible d'envoyer votre message, vous n'êtes pas insrit à ce topic`);
+        var frame = "ERROR\n"
+                    + "content-type:text/plain\n"
+                    + "content-length:\n"
+                    + "message: malformed frame received\n"
+                    + "^@";
+
+        ws.send(frame);
 }
 }
 
@@ -121,13 +164,12 @@ function getQueue(lines) {
     }   
 }
 
-function testQueue(lines){
+function getQueueSubscribe(lines){
     return lines[2].toString().replace('destination:', '');
 }
 
-function getQueue2(lines){
+function getQueueSend(lines){
     return lines[1].toString().replace('destination:', '');
-
 }
 
 function getType(lines) {
@@ -142,41 +184,33 @@ wss.on('connection', (ws: WebSocket, req) => {
     console.log("New client connected with ip : " + req.socket.remoteAddress);
 
     ws.on('message', (message: string) => {
-
-        //console.log('received :\n' + message);
         
         if (message.toString().startsWith('SUBSCRIBE')) {
             const stringReq = Str(message).lines();
-            const location = testQueue(stringReq);
-            console.log(stringReq[1].replace('id:',''));
-            subscription(ws, message, location, stringReq[1].replace('id:', ''));
+            const location = getQueueSubscribe(stringReq);
+            if (error(ws, message, location)) 
+                subscription(ws, message, location, stringReq[1].replace('id:', ''));
         }
         if (message.toString().startsWith('UNSUBSCRIBE')) {
             /**
              * Supprimer le client connecté en vérifiant que l'id est le même
              */
             const location = getQueue(Str(message).lines());
-            unsubscribe(ws, message, location);
+            if(error(ws, message, location))
+                unsubscribe(ws, message, location);
         }
         if (message.toString().startsWith('SEND')) { 
-            /**
-             * Les messages renvoyés aux autres utilisateurs doivent utiliser la frame MESSAGE du server
-             */
-            const location = getQueue2(Str(message).lines());
-            console.log(location);
+            const location = getQueueSend(Str(message).lines());
             var stringMessage = message.toString();
             const type = getType(Str(message).lines());
-            console.log(type);
-            sendMessage(ws, stringMessage, location, type);
+            if(error(ws, message, location))
+                sendMessage(ws, stringMessage, location, type);
         }  
         if(message.toString().startsWith('DISCONNECT')){
             const receipt_id = getReceiptId(message);
             if(ws)
             disconnect(ws);
-        }
-        if(message.toString().startsWith('ERROR')){
-            
-        }    
+        } 
     });
 
 });
