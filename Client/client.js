@@ -45,5 +45,34 @@ function unSubscribe(subscriptionId){
 }
 
 
+//Fonction connect si version STOMP 1.2 avec login et mdp
+function connect(login,password){
+   
+    if(!login === "" && mdp === ""){
+        alert("Saisir un nom d'utilisateur et un mot de passe");
+    }else{
+        var login = document.getElementById('username').value;
+        var password = document.getElementById('password').value;
+        var frame_connect = "CONNECT\n"
+        + "accept-version:1.2\n"
+        +"host://localhost:8999/stomp\n"
+        +"\n"
+        +"^@";
+    
+        var frame_stomp = "STOMP\n"
+        + "accept-version:1.2\n"
+        + "host://localhost:8999/stomp\n"
+        +`login:${login}\n`
+        +`password:${paswword}\n`
+        +"heart-beat:\n"
+        +"session:\n"
+        +"server:\n"
+        +"\n"
+        +"^@";
+
+    }
+   
+}
+
 
 

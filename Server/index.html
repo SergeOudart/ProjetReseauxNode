@@ -14,6 +14,10 @@
     <div id="connection">
         <h2>Nom d'utilisateur</h2>
         <input id="username" type="text" name="username">
+    </div>
+    <div id="connection">
+        <h2>Mot de passe</h2>
+        <input id="password" type="text" name="password">
         <button onclick="connexion()">Connexion</button>
     </div>
     <div>
@@ -26,6 +30,12 @@
         <textarea id="chatArea" readonly></textarea>
         <button onclick="deconnexion()">Déconnexion</button>
     </div>
+    <select id=listeDestination name=listeDestination>
+        <option value=1>Chat 1</option>
+        <option value=2>Chat 2</option>
+        <option value=3>Chat 3</option>
+        <button onclick="deconnexion()">Valider</button>
+    </select>
 
     <script>
         function connexion() {
