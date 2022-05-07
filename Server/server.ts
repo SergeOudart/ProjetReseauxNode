@@ -112,37 +112,39 @@ function unsubscribe(ws, message, location) {
  * TODO Ajouter le message à envoyer dans la frame LOL
  */
 
-function body(message, subscriptionId, messageId){
+function body(message, subscriptionId, messageId, messageToSend){
     const stringReq = Str(message).lines();
     var frame = "MESSAGE\n"
                 + `subscription: ${subscriptionId}\n`
                 + `messageid: ${messageId}\n`
                 + `destination: ${getQueueSend(stringReq)}\n`
-                + "content-type: text/plain"
-                + "\n\n\0";
+                + "content-type:text/plain"
+                + "\n\n"
+                + `${messageToSend}\n`
+                + "^@";
     
     return frame;
 
 }
 
 
-function sendMessage(ws, message, location, type) {
+function sendMessage(ws, message, location, type, messageToSend) {
     var messageId = Math.floor(Math.random() * 1000);
 
     if(clientsChat1.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat1'))){
         clientsChat1.forEach((value, key) => {
-            const frame = body(message, value, messageId);
+            const frame = body(message, value, messageId, messageToSend);
             key.send(frame);
         });
     }
      else if (clientsChat2.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat2'))) {
         clientsChat2.forEach((value, key) => {
-            const frame = body(message, value, messageId);
+            const frame = body(message, value, messageId, messageToSend);
             key.send(frame);
         });
     } else if (clientsChat3.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat3'))) {
         clientsChat3.forEach((value, key) => {
-            const frame = body(message, value, messageId);
+            const frame = body(message, value, messageId, messageToSend);
             key.send(frame);
         });
     } else {
@@ -179,6 +181,19 @@ function getReceiptId(lines){
     return lines[1].toString().replace('receipt-id:','');
 }
 
+function getMessage(ws,lines) {
+    var result = [];
+    for (var i = 0;i<=lines.length;i++) {
+        console.log(lines[i]);
+        if (!lines[i]?.toString().includes("SEND") && !lines[i]?.toString().includes("destination") && !lines[i]?.toString().includes("content-type") && !lines[i]?.toString().includes("^@")) {
+            result.push(lines[i]);
+        }
+    }
+    var realResult = result.join(' ');
+
+    return realResult;
+}
+
 wss.on('connection', (ws: WebSocket, req) => {
 
     console.log("New client connected with ip : " + req.socket.remoteAddress);
@@ -203,8 +218,9 @@ wss.on('connection', (ws: WebSocket, req) => {
             const location = getQueueSend(Str(message).lines());
             var stringMessage = message.toString();
             const type = getType(Str(message).lines());
+            var messageToSend = getMessage(ws, Str(message).lines());
             if(error(ws, message, location))
-                sendMessage(ws, stringMessage, location, type);
+                sendMessage(ws, stringMessage, location, type, messageToSend);
         }  
         if(message.toString().startsWith('DISCONNECT')){
             const receipt_id = getReceiptId(message);

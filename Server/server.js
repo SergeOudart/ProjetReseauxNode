@@ -30,7 +30,7 @@ function subscription(ws, message, location, id) {
             break;
     }
 }
-// Effectuer la vérification des receipt
+//TODO Effectuer la vérification des receipt
 function disconnect(ws) {
     ws.on('close', function () {
         clientsChat1["delete"](ws);
@@ -39,6 +39,13 @@ function disconnect(ws) {
     });
     ws.close();
 }
+/**
+ * TODO Envoyer les frame ERROR en fonction de l'erreur trigger
+ * @param ws
+ * @param message
+ * @param queue
+ * @returns
+ */
 function error(ws, message, queue) {
     var msg = message.toString().split("\n");
     var verifFrame = false;
@@ -46,11 +53,10 @@ function error(ws, message, queue) {
         case "SEND":
             verifFrame = msg[1].includes("destination:") && listChatDispo.includes(queue) && msg[2].toString() == "content-type:text/plain" && message.toString().includes("^@");
             break;
-        case "SUBSCRIBE": //Vérifier que le nombre après id: n'est pas vide
+        case "SUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
             verifFrame = msg[1].includes("id:") && msg[2].includes("destination:") && listChatDispo.includes(queue) && message.toString().includes("^@");
-            console.log(verifFrame);
             break;
-        case "UNSUBSCRIBE": //Vérifier que le nombre après id: n'est pas vide
+        case "UNSUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
             if (msg[1].includes("id:")) {
                 var id = msg[1].replace("id:", "");
             }
@@ -85,35 +91,37 @@ function unsubscribe(ws, message, location) {
     }
 }
 /**
- * Ajouter le message à envoyer dans la frame LOL
+ * TODO Ajouter le message à envoyer dans la frame LOL
  */
-function body(message, subscriptionId, messageId) {
+function body(message, subscriptionId, messageId, messageToSend) {
     var stringReq = Str(message).lines();
     var frame = "MESSAGE\n"
         + "subscription: ".concat(subscriptionId, "\n")
         + "messageid: ".concat(messageId, "\n")
         + "destination: ".concat(getQueueSend(stringReq), "\n")
         + "content-type: text/plain"
-        + "\n\n\0";
+        + "\n\n"
+        + "".concat(messageToSend, "\n")
+        + "^@";
     return frame;
 }
-function sendMessage(ws, message, location, type) {
+function sendMessage(ws, message, location, type, messageToSend) {
     var messageId = Math.floor(Math.random() * 1000);
     if (clientsChat1.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat1'))) {
         clientsChat1.forEach(function (value, key) {
-            var frame = body(message, value, messageId);
+            var frame = body(message, value, messageId, messageToSend);
             key.send(frame);
         });
     }
     else if (clientsChat2.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat2'))) {
         clientsChat2.forEach(function (value, key) {
-            var frame = body(message, value, messageId);
+            var frame = body(message, value, messageId, messageToSend);
             key.send(frame);
         });
     }
     else if (clientsChat3.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat3'))) {
         clientsChat3.forEach(function (value, key) {
-            var frame = body(message, value, messageId);
+            var frame = body(message, value, messageId, messageToSend);
             key.send(frame);
         });
     }
@@ -146,6 +154,18 @@ function getType(lines) {
 function getReceiptId(lines) {
     return lines[1].toString().replace('receipt-id:', '');
 }
+function getMessage(ws, lines) {
+    var _a, _b, _c, _d;
+    var result = [];
+    for (var i = 0; i <= lines.length; i++) {
+        console.log(lines[i]);
+        if (!((_a = lines[i]) === null || _a === void 0 ? void 0 : _a.toString().includes("SEND")) && !((_b = lines[i]) === null || _b === void 0 ? void 0 : _b.toString().includes("destination")) && !((_c = lines[i]) === null || _c === void 0 ? void 0 : _c.toString().includes("content-type")) && !((_d = lines[i]) === null || _d === void 0 ? void 0 : _d.toString().includes("^@"))) {
+            result.push(lines[i]);
+        }
+    }
+    var realResult = result.join(' ');
+    return realResult;
+}
 wss.on('connection', function (ws, req) {
     console.log("New client connected with ip : " + req.socket.remoteAddress);
     ws.on('message', function (message) {
@@ -167,8 +187,9 @@ wss.on('connection', function (ws, req) {
             var location_3 = getQueueSend(Str(message).lines());
             var stringMessage = message.toString();
             var type = getType(Str(message).lines());
+            var messageToSend = getMessage(ws, Str(message).lines());
             if (error(ws, message, location_3))
-                sendMessage(ws, stringMessage, location_3, type);
+                sendMessage(ws, stringMessage, location_3, type, messageToSend);
         }
         if (message.toString().startsWith('DISCONNECT')) {
             var receipt_id = getReceiptId(message);
