@@ -99,7 +99,7 @@ function body(message, subscriptionId, messageId, messageToSend) {
         + "subscription: ".concat(subscriptionId, "\n")
         + "messageid: ".concat(messageId, "\n")
         + "destination: ".concat(getQueueSend(stringReq), "\n")
-        + "content-type: text/plain"
+        + "content-type:text/plain"
         + "\n\n"
         + "".concat(messageToSend, "\n")
         + "^@";
@@ -134,6 +134,13 @@ function sendMessage(ws, message, location, type, messageToSend) {
         ws.send(frame);
     }
 }
+function sendConnect(ws, version) {
+    var frame = "CONNECTED\n"
+        + "version:" + version + "\n"
+        + "\n"
+        + "^@";
+    ws.send(frame);
+}
 function getQueue(lines) {
     if (lines[0] == 'SEND') {
         return lines[1].replace('destination:', '');
@@ -153,6 +160,15 @@ function getType(lines) {
 }
 function getReceiptId(lines) {
     return lines[1].toString().replace('receipt-id:', '');
+}
+function getVersion(lines) {
+    return lines[1].toString().replace('accept-version:', '');
+}
+function getUsername(lines) {
+    return lines[3].toString().replace('login:', '');
+}
+function getPassword(lines) {
+    return lines[4].toString().replace('password:', '');
 }
 function getMessage(ws, lines) {
     var _a, _b, _c, _d;
@@ -195,6 +211,15 @@ wss.on('connection', function (ws, req) {
             var receipt_id = getReceiptId(message);
             if (ws)
                 disconnect(ws);
+        }
+        if (message.toString().startsWith('STOMP')) {
+            var version = getVersion(Str(message).lines());
+            var username = getUsername(Str(message).lines());
+            var password = getPassword(Str(message).lines());
+            if (version.includes('1.2') && username != "" && password != "") {
+                console.log("Ehop");
+                sendConnect(ws, version);
+            }
         }
     });
 });
