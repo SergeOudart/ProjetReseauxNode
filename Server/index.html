@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style/style.css">
+    <script type="text/javascript" src="../Client/client.js"></script>
     <title>Chat Websocket</title>
 </head>
 <body>
@@ -18,7 +19,7 @@
     <div id="connection">
         <h2>Mot de passe</h2>
         <input id="password" type="text" name="password">
-        <button onclick="connexion()">Connexion</button>
+        <button onclick="connect()">Connexion</button>
     </div>
     <div>
         <h2>Message</h2>
@@ -38,7 +39,7 @@
     </select>
 
     <script>
-        function connexion() {
+        /*function connexion() {
             globalThis.socket = new WebSocket("ws://localhost:8999/stomp", "v10.stomp");
 
             socket.addEventListener('open', (event) => {
@@ -56,7 +57,7 @@
                 + "nickname: anonymous\n";
                 + "\n\n\0";
             socket.send(frame);*/
-        }
+        
 
         function envoie() {
             let message = document.getElementById('userMessage').value;
