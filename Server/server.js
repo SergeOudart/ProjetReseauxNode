@@ -72,23 +72,24 @@ function error(ws, message, queue) {
     return verifFrame;
 }
 function unsubscribe(ws, message, location) {
-    switch (location) {
-        case '/chat1':
-            clientsChat1["delete"](ws);
-            ws.send('you unsubscribed of chat 1 with ');
-            break;
-        case '/chat2':
-            clientsChat2["delete"](ws);
-            ws.send('you unsubscribed of chat 2 with ');
-            break;
-        case '/chat3':
-            clientsChat3["delete"](ws);
-            ws.send('you unsubscribed of chat 3 with ');
-            break;
-        default:
-            ws.send("D\u00E9sol\u00E9, vous n'\u00EAtes pas inscrit \u00E0 ce topic");
-            break;
-    }
+    var id = getUnsubscribeId(Str(message).lines());
+    clientsChat1.forEach(function (key, value) {
+        if (key.includes(id)) {
+            clientsChat1["delete"](value);
+        }
+    });
+    clientsChat2.forEach(function (key, value) {
+        if (key.includes(id)) {
+            clientsChat2["delete"](value);
+        }
+    });
+    clientsChat3.forEach(function (key, value) {
+        if (key.includes(id)) {
+            clientsChat3["delete"](value);
+        }
+    });
+    var response = "UNSUBSCRIBED";
+    ws.send(response);
 }
 /**
  * TODO Ajouter le message à envoyer dans la frame LOL
@@ -96,9 +97,9 @@ function unsubscribe(ws, message, location) {
 function body(message, subscriptionId, messageId, messageToSend) {
     var stringReq = Str(message).lines();
     var frame = "MESSAGE\n"
-        + "subscription: ".concat(subscriptionId, "\n")
-        + "messageid: ".concat(messageId, "\n")
-        + "destination: ".concat(getQueueSend(stringReq), "\n")
+        + "subscription:".concat(subscriptionId, "\n")
+        + "messageid:".concat(messageId, "\n")
+        + "destination:".concat(getQueueSend(stringReq), "\n")
         + "content-type:text/plain"
         + "\n\n"
         + "".concat(messageToSend, "\n")
@@ -170,11 +171,13 @@ function getUsername(lines) {
 function getPassword(lines) {
     return lines[4].toString().replace('password:', '');
 }
+function getUnsubscribeId(lines) {
+    return lines[1].toString().replace('id:', '');
+}
 function getMessage(ws, lines) {
     var _a, _b, _c, _d;
     var result = [];
     for (var i = 0; i <= lines.length; i++) {
-        console.log(lines[i]);
         if (!((_a = lines[i]) === null || _a === void 0 ? void 0 : _a.toString().includes("SEND")) && !((_b = lines[i]) === null || _b === void 0 ? void 0 : _b.toString().includes("destination")) && !((_c = lines[i]) === null || _c === void 0 ? void 0 : _c.toString().includes("content-type")) && !((_d = lines[i]) === null || _d === void 0 ? void 0 : _d.toString().includes("^@"))) {
             result.push(lines[i]);
         }
@@ -217,7 +220,6 @@ wss.on('connection', function (ws, req) {
             var username = getUsername(Str(message).lines());
             var password = getPassword(Str(message).lines());
             if (version.includes('1.2') && username != "" && password != "") {
-                console.log("Ehop");
                 sendConnect(ws, version);
             }
         }

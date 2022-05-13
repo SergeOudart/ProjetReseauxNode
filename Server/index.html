@@ -23,52 +23,27 @@
     </div>
     <div>
         <h2>Message</h2>
-        <input id="userMessage" type="text" name="message">
-        <button onclick="envoie()">Envoyer</button>
+        <textarea id="userMessage" type="text" name="message"></textarea>
+        <button onclick="sendMessage()">Envoyer</button>
     </div>
     <div>
-        <h2>Chat</h2>
-        <textarea id="chatArea" readonly></textarea>
-        <button onclick="deconnexion()">Déconnexion</button>
+        <h2>Chat 1</h2>
+        <textarea id="chatArea1" readonly></textarea>
+    </div>
+    <div>
+        <h2>Chat 2</h2>
+        <textarea id="chatArea2" readonly></textarea>
+    </div>
+    <div>
+        <h2>Chat 3</h2>
+        <textarea id="chatArea2" readonly></textarea>
     </div>
     <select id=listeDestination name=listeDestination>
-        <option value=1>Chat 1</option>
-        <option value=2>Chat 2</option>
-        <option value=3>Chat 3</option>
-        <button onclick="deconnexion()">Valider</button>
+        <option value="/chat1">Chat 1</option>
+        <option value="/chat2">Chat 2</option>
+        <option value="/chat3">Chat 3</option>
     </select>
-
-    <script>
-        /*function connexion() {
-            globalThis.socket = new WebSocket("ws://localhost:8999/stomp", "v10.stomp");
-
-            socket.addEventListener('open', (event) => {
-            
-            });
-
-            socket.addEventListener('message', function (event) {
-                const textarea = document.getElementById('chatArea');
-                textarea.value += '\n' + event.data;
-                console.log(event.data);
-            })
-            /*var frame = "CONNECT\n"
-                + "login: websockets\n";
-                + "passcode: rabbitmq\n";
-                + "nickname: anonymous\n";
-                + "\n\n\0";
-            socket.send(frame);*/
-        
-
-        function envoie() {
-            let message = document.getElementById('userMessage').value;
-            socket.send(message);
-        }
-
-        function deconnexion() {
-            const textarea = document.getElementById('chatArea');
-            textarea.value = 'You are disconnected from the chat';
-            socket.close();
-        }
-    </script>
+    <button onclick="sendSubscribe()">S'abonner</button>
+    <button onclick="unsubscribe()">Se déconnecter</button>
 </body>
 </html>

@@ -89,24 +89,25 @@ function error(ws, message, queue){
 
 
 function unsubscribe(ws, message, location) {
-    switch (location) {
-        case '/chat1':
-            clientsChat1.delete(ws);
-            ws.send('you unsubscribed of chat 1 with ');
-            break;
-        case '/chat2':
-            clientsChat2.delete(ws);
-            ws.send('you unsubscribed of chat 2 with ');
-            break;
-        case '/chat3':
-            clientsChat3.delete(ws);
-            ws.send('you unsubscribed of chat 3 with ');
-            break;
-        default:
-            ws.send(`Désolé, vous n'êtes pas inscrit à ce topic`);
-            break;
-    }
+    var id = getUnsubscribeId(Str(message).lines());
+    clientsChat1.forEach((key,value) => {
+        if (key.includes(id)) {
+            clientsChat1.delete(value);
+        }
+    });
+    clientsChat2.forEach((key,value) => {
+        if (key.includes(id)) {
+            clientsChat2.delete(value);
+        }
+    });
+    clientsChat3.forEach((key,value) => {
+        if (key.includes(id)) {
+            clientsChat3.delete(value);
+        }
+    });
+    var response = "UNSUBSCRIBED";
 
+    ws.send(response);
 }
 /**
  * TODO Ajouter le message à envoyer dans la frame LOL
@@ -115,9 +116,9 @@ function unsubscribe(ws, message, location) {
 function body(message, subscriptionId, messageId, messageToSend){
     const stringReq = Str(message).lines();
     var frame = "MESSAGE\n"
-                + `subscription: ${subscriptionId}\n`
-                + `messageid: ${messageId}\n`
-                + `destination: ${getQueueSend(stringReq)}\n`
+                + `subscription:${subscriptionId}\n`
+                + `messageid:${messageId}\n`
+                + `destination:${getQueueSend(stringReq)}\n`
                 + "content-type:text/plain"
                 + "\n\n"
                 + `${messageToSend}\n`
@@ -198,11 +199,13 @@ function getUsername(lines) {
 function getPassword(lines) {
     return lines[4].toString().replace('password:', '');
 }
+function getUnsubscribeId(lines) {
+    return lines[1].toString().replace('id:', '');
+}
 
 function getMessage(ws,lines) {
     var result = [];
     for (var i = 0;i<=lines.length;i++) {
-        console.log(lines[i]);
         if (!lines[i]?.toString().includes("SEND") && !lines[i]?.toString().includes("destination") && !lines[i]?.toString().includes("content-type") && !lines[i]?.toString().includes("^@")) {
             result.push(lines[i]);
         }
@@ -221,7 +224,7 @@ wss.on('connection', (ws: WebSocket, req) => {
         if (message.toString().startsWith('SUBSCRIBE')) {
             const stringReq = Str(message).lines();
             const location = getQueueSubscribe(stringReq);
-            if (error(ws, message, location)) 
+            if (error(ws, message, location))
                 subscription(ws, message, location, stringReq[1].replace('id:', ''));
         }
         if (message.toString().startsWith('UNSUBSCRIBE')) {
