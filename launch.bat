@@ -1,2 +1,2 @@
-start "" "Client/connexion.html"
+start "" "Client/index.html"
 node Server/server.js
