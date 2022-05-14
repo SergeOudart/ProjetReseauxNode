@@ -10,16 +10,35 @@ socket.addEventListener('message', (event) => {
     console.log(event.data);
     if(event.data.includes('CONNECTED')){
         connected = true;
+        document.getElementById("connect").innerHTML = "Connecté";
     }
     if (event.data.includes('MESSAGE')) {
         traitementMessage(event.data);
     }
     if (event.data.includes('UNSUBSCRIBED')) {
         var unsubChat = document.getElementById("listeDestination").value;
-        alert("Vous vous êtes désabonné du " + unsubChat);
+        if (unsubChat == "/chat1") {
+            document.getElementById("subChat1").innerHTML.replace("Abonné", "");   //Marche pas
+        } else if(unsubChat == "/chat2") {
+            document.getElementById("subChat2").innerHTML.replace("Abonné", "");
+        } else {
+            document.getElementById("subChat3").innerHTML.replace("Abonné", "");
+        }
     }
     if (event.data.includes('ERROR')) {
-        
+        var errorMessage = getMessageError(event.data.split("\n"));
+        alert(errorMessage);
+    }
+    if (event.data.includes('SUBSCRIBED')) {
+        var subChat = document.getElementById("listeDestination").value;
+        console.log(subChat);
+        if (subChat == "/chat1") {
+            document.getElementById("subChat1").innerHTML = "Abonné"
+        } else if(subChat == "/chat2") {
+            document.getElementById("subChat2").innerHTML = "Abonné"
+        } else {
+            document.getElementById("subChat3").innerHTML = "Abonné"
+        }
     }
 });
 
@@ -128,6 +147,10 @@ function getSubscriptionMessage(lines){
 
 function getContenTypeMessage(lines) {
     return lines[4].toString().replace('content-type:', '');
+}
+
+function getMessageError(lines) {
+    return lines[3].toString().replace('message:', '');
 }
 
 function getMessage(lines) {
