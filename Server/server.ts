@@ -18,15 +18,15 @@ function subscription(ws, message, location, id) {
     switch (location) {
         case '/chat1':
             clientsChat1.set(ws, id);
-            ws.send('you subscribed to chat 1 with ');
+            ws.send('SUBSCRIBED');
             break;
         case '/chat2':
             clientsChat2.set(ws, id);
-            ws.send('you subscribed to chat 2 with ');
+            ws.send('SUBSCRIBED');
             break;
         case '/chat3':
             clientsChat3.set(ws, id);
-            ws.send('you subscribed to chat 3 with ');
+            ws.send('SUBSCRIBED');
             break;
         default:
             ws.send(`Désolé, ce topic n'éxiste pas`);
