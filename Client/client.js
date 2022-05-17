@@ -1,16 +1,25 @@
 globalThis.socket = new WebSocket("ws://localhost:8999/stomp", "v10.stomp");
 globalThis.connected = false;
 globalThis.subscriptionGlobal;
+globalThis.username;
 
 socket.addEventListener('open', (event) => {
     console.log('Connexion avec le serveur établie');
+    document.getElementById("sendMessage").style.display = "none";
+    document.getElementById("chat1").style.display = "none";
+    document.getElementById("chat2").style.display = "none";
+    document.getElementById("chat3").style.display = "none";
+    document.getElementById("subPart").style.display = "none";
 });
+
 
 socket.addEventListener('message', (event) => {
     console.log(event.data);
     if(event.data.includes('CONNECTED')){
         connected = true;
         document.getElementById("connect").innerHTML = "Connecté";
+        document.getElementById("sendMessage").style.display = "block";
+        document.getElementById("subPart").style.display = "block";
     }
     if (event.data.includes('MESSAGE')) {
         traitementMessage(event.data);
@@ -18,11 +27,11 @@ socket.addEventListener('message', (event) => {
     if (event.data.includes('UNSUBSCRIBED')) {
         var unsubChat = document.getElementById("listeDestination").value;
         if (unsubChat == "/chat1") {
-            document.getElementById("subChat1").innerHTML.replace("Abonné", "");   //Marche pas
+            document.getElementById("chat1").style.display = "none";
         } else if(unsubChat == "/chat2") {
-            document.getElementById("subChat2").innerHTML.replace("Abonné", "");
+            document.getElementById("chat1").style.display = "none";
         } else {
-            document.getElementById("subChat3").innerHTML.replace("Abonné", "");
+            document.getElementById("chat1").style.display = "none";
         }
     }
     if (event.data.includes('ERROR')) {
@@ -33,11 +42,11 @@ socket.addEventListener('message', (event) => {
         var subChat = document.getElementById("listeDestination").value;
         console.log(subChat);
         if (subChat == "/chat1") {
-            document.getElementById("subChat1").innerHTML = "Abonné"
+            document.getElementById("chat1").style.display = "block";
         } else if(subChat == "/chat2") {
-            document.getElementById("subChat2").innerHTML = "Abonné"
+            document.getElementById("chat2").style.display = "block";
         } else {
-            document.getElementById("subChat3").innerHTML = "Abonné"
+            document.getElementById("chat3").style.display = "block";
         }
     }
 });
@@ -71,6 +80,7 @@ function sendMessage(){
     var frame = "SEND\n"
     + `destination:${destination}\n`
     + `content-type:text/plain\n`
+    + `username:${username}\n`
     + '\n'
     + `${message}\n`
     + '^@';
@@ -86,6 +96,8 @@ function connect(){
     var password;
     var login = document.getElementById('username').value;
     var password = document.getElementById('password').value;
+
+    username = login;
 
     if(login === "" && password === ""){
         alert("Saisir un nom d'utilisateur et un mot de passe");
@@ -109,17 +121,18 @@ function traitementMessage(message) {
 
     if ((subscription = subscriptionGlobal) && (getContenTypeMessage(message.split("\n")) == "text/plain")) {
         var realMessage = getMessage(message.split("\n"));
+        var username = getUsername(message.split("\n"));
         switch (destination) {
             case "/chat1":
-                document.getElementById("chatArea1").value += "\n" + realMessage; 
+                document.getElementById("chatArea1").value += "\n" + username + " : " + realMessage; 
                 break;
 
             case "/chat2":
-                document.getElementById("chatArea2").value += "\n" + realMessage; 
+                document.getElementById("chatArea2").value += "\n" + username + " : " + realMessage; 
                 break;
 
             case "/chat3":
-                document.getElementById("chatArea3").value += "\n" + realMessage; 
+                document.getElementById("chatArea3").value += "\n" + username + " : " + realMessage;
                 break;
         
             default:
@@ -153,9 +166,13 @@ function getMessageError(lines) {
     return lines[3].toString().replace('message:', '');
 }
 
+function getUsername(lines) {
+    return lines[5].toString().replace('username:', '');
+}
+
 function getMessage(lines) {
     var result = [];
-    for (var i = 6;i<lines.length;i++) {
+    for (var i = 7;i<lines.length;i++) {
         if (!lines[i].includes("^@")) {
             result.push(lines[i]);
         }
@@ -163,10 +180,3 @@ function getMessage(lines) {
     var realResult = result.join(' ');
     return realResult;
 }
-
-
-
-
-
-
-

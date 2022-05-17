@@ -10,41 +10,44 @@
 </head>
 <body>
     <div id="connection">
-        <h2>Nom d'utilisateur</h2>
-        <input id="username" type="text" name="username">
-    </div>
-    <div id="connection">
-        <h2>Mot de passe</h2>
-        <input id="password" type="text" name="password">
-        <button onclick="connect()">Connexion</button>
+        <div class="connectionField">
+            <h2>Nom d'utilisateur</h2>
+            <input id="username" type="text" name="username">
+        </div>
+        <div class="connectionField">
+            <h2>Mot de passe</h2>
+            <input id="password" type="password" name="password">
+            <button onclick="connect()">Connexion</button>
+        </div>
     </div>
     <p id="connect"></p>
-    <div>
+    <div id="sendMessage">
         <h2>Message</h2>
-        <textarea id="userMessage" type="text" name="message"></textarea>
+        <textarea id="userMessage" type="text" name="message"></textarea><br>
         <button onclick="sendMessage()">Envoyer</button>
     </div>
-    <div>
-        <h2>Chat 1</h2>
-        <textarea id="chatArea1" readonly></textarea>
+    <div id="allChat">
+        <div id="chat1">
+            <h2>Chat 1</h2>
+            <textarea id="chatArea1" readonly></textarea>
+        </div>
+        <div id="chat2">
+            <h2>Chat 2</h2>
+            <textarea id="chatArea2" readonly></textarea>
+        </div>
+        <div id="chat3">
+            <h2>Chat 3</h2>
+            <textarea id="chatArea3" readonly></textarea>
+        </div>
+        <div id="subPart">
+            <select id=listeDestination name=listeDestination>
+                <option value="/chat1">Chat 1</option>
+                <option value="/chat2">Chat 2</option>
+                <option value="/chat3">Chat 3</option>
+            </select>
+            <button onclick="sendSubscribe()">S'abonner</button>
+            <button onclick="unsubscribe()">Se désabonner</button>
+        </div>
     </div>
-    <p id="subChat1"></p>
-    <div>
-        <h2>Chat 2</h2>
-        <textarea id="chatArea2" readonly></textarea>
-    </div>
-    <p id="subChat2"></p>
-    <div>
-        <h2>Chat 3</h2>
-        <textarea id="chatArea3" readonly></textarea>
-    </div>
-    <p id="subChat3"></p>
-    <select id=listeDestination name=listeDestination>
-        <option value="/chat1">Chat 1</option>
-        <option value="/chat2">Chat 2</option>
-        <option value="/chat3">Chat 3</option>
-    </select>
-    <button onclick="sendSubscribe()">S'abonner</button>
-    <button onclick="unsubscribe()">Se désabonner</button>
 </body>
 </html>

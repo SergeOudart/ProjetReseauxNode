@@ -1,0 +1,36 @@
+#connection {
+    display: inline;
+}
+
+#sendMessage {
+    margin: auto;
+    width: 50%;
+    padding: 10px;
+    text-align: center;
+}
+
+#sendMessage > button {
+    margin-top: 5px;
+}
+
+#chat1 {
+    float: left;
+    margin-left: 10%;
+}
+
+#chat2 {
+    float: left;
+    margin-left: 10%;
+}
+
+#chat3 {
+    float: left;
+    margin-left: 10%;
+}
+
+#allChat {
+    margin: auto;
+    width: 50%;
+    padding: 10px;
+    text-align: center;
+}

@@ -7,10 +7,20 @@ var Str = require("@supercharge/strings");
 var app = express();
 var server = http.createServer(app);
 var wss = new WebSocket.Server({ server: server });
+/**
+ * Il y a 3 chats dans l'application, donc 3 Maps où on stock le client WebSocket ainsi que l'id de son abonnement au chat
+ */
 var clientsChat1 = new Map();
 var clientsChat2 = new Map();
 var clientsChat3 = new Map();
 var listChatDispo = ["/chat1", "/chat2", "/chat3"];
+/**
+ * Fonction qui permet à un utilisateur de s'abonner à un chat en fonction des informations passées
+ * @param ws
+ * @param message
+ * @param location
+ * @param id
+ */
 function subscription(ws, message, location, id) {
     switch (location) {
         case '/chat1':
@@ -30,7 +40,10 @@ function subscription(ws, message, location, id) {
             break;
     }
 }
-//TODO Effectuer la vérification des receipt
+/**
+ * Fonction qui déconnecte un utilisateur et le supprime des chats suivis
+ * @param ws
+ */
 function disconnect(ws) {
     ws.on('close', function () {
         clientsChat1["delete"](ws);
@@ -40,7 +53,7 @@ function disconnect(ws) {
     ws.close();
 }
 /**
- * TODO Envoyer les frame ERROR en fonction de l'erreur trigger
+ * Envoyer les frame ERROR en fonction de l'erreur trouvée, ou renvoie true si il n'y a pas d'erreur dans la frame
  * @param ws
  * @param message
  * @param queue
@@ -55,6 +68,10 @@ function error(ws, message, queue) {
             break;
         case "SUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
             verifFrame = msg[1].includes("id:") && msg[2].includes("destination:") && listChatDispo.includes(queue) && message.toString().includes("^@");
+            if (!verifFrame) {
+                sendSubscribeError(ws);
+                disconnect(ws);
+            }
             break;
         case "UNSUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
             if (msg[1].includes("id:")) {
@@ -63,14 +80,36 @@ function error(ws, message, queue) {
             if (clientsChat1.get(ws) == id || clientsChat2.get(ws) == id || clientsChat3.get(ws) == id) {
                 verifFrame = true;
             }
+            else {
+                var frame = "ERROR\n"
+                    + "content-type:text/plain\n"
+                    + "message:not subscribed\n"
+                    + "-----------------------\n"
+                    + "You didn't subscribed to this chat !\n"
+                    + "^@";
+                ws.send(frame);
+            }
+            if (!verifFrame) {
+                sendUnsubscribeError(ws);
+                disconnect(ws);
+            }
             break;
         case "DISCONNECT":
+            verifFrame = msg[1].includes("receipt:");
             break;
+        case "STOMP":
+            verifFrame = msg[1].includes("accept-version:1.2") && msg[2].includes("host://localhost:8999/stomp") && message.toString().includes("^@");
         default:
             break;
     }
     return verifFrame;
 }
+/**
+ * Si un client veut se désabonner d'un chat, on vérifie grâce à l'id passé dans quelle map il est, et on supprime le client de la maps
+ * @param ws
+ * @param message
+ * @param location
+ */
 function unsubscribe(ws, message, location) {
     var id = getUnsubscribeId(Str(message).lines());
     clientsChat1.forEach(function (key, value) {
@@ -92,37 +131,53 @@ function unsubscribe(ws, message, location) {
     ws.send(response);
 }
 /**
- * TODO Ajouter le message à envoyer dans la frame LOL
+ * On forme la frame message à renvoyer à tous les destinataires abonnés au Chat
+ * @param message
+ * @param subscriptionId
+ * @param messageId
+ * @param messageToSend
+ * @param username
+ * @returns
  */
-function body(message, subscriptionId, messageId, messageToSend) {
+function body(message, subscriptionId, messageId, messageToSend, username) {
     var stringReq = Str(message).lines();
     var frame = "MESSAGE\n"
         + "subscription:".concat(subscriptionId, "\n")
         + "messageid:".concat(messageId, "\n")
         + "destination:".concat(getQueueSend(stringReq), "\n")
-        + "content-type:text/plain"
+        + "content-type:text/plain\n"
+        + "username:".concat(username, "\n")
         + "\n\n"
         + "".concat(messageToSend, "\n")
         + "^@";
     return frame;
 }
-function sendMessage(ws, message, location, type, messageToSend) {
+/**
+ * Cette fonction permet de vérifier si l'expéditeur est bien abonné au chat ciblé et d'envoyer la frame à tous les clients abonnés
+ * @param ws
+ * @param message
+ * @param location
+ * @param type
+ * @param messageToSend
+ * @param username
+ */
+function sendMessage(ws, message, location, type, messageToSend, username) {
     var messageId = Math.floor(Math.random() * 1000);
     if (clientsChat1.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat1'))) {
         clientsChat1.forEach(function (value, key) {
-            var frame = body(message, value, messageId, messageToSend);
+            var frame = body(message, value, messageId, messageToSend, username);
             key.send(frame);
         });
     }
     else if (clientsChat2.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat2'))) {
         clientsChat2.forEach(function (value, key) {
-            var frame = body(message, value, messageId, messageToSend);
+            var frame = body(message, value, messageId, messageToSend, username);
             key.send(frame);
         });
     }
     else if (clientsChat3.has(ws) && (type.toString().includes('text/plain') && location.toString().includes('/chat3'))) {
         clientsChat3.forEach(function (value, key) {
-            var frame = body(message, value, messageId, messageToSend);
+            var frame = body(message, value, messageId, messageToSend, username);
             key.send(frame);
         });
     }
@@ -142,6 +197,94 @@ function sendConnect(ws, version) {
         + "^@";
     ws.send(frame);
 }
+/**
+ * Permet de générer une frame d'erreur si une frame subscribe reçue est mal formée
+ * @param ws
+ */
+function sendSubscribeError(ws) {
+    var frame = "ERROR\n"
+        + "content-type:text/plain\n"
+        + "message:malformed subscribe message\n"
+        + "\n"
+        + "A subscribe frame should look like this :\n"
+        + "SUBSCRIBE\n"
+        + "id:0\n"
+        + "destination:/queue/foo\n"
+        + "\n"
+        + "^@";
+    ws.send(frame);
+}
+/**
+ * Permet de générer une frame d'erreur si une frame unsubscribe reçue est mal formée
+ * @param ws
+ */
+function sendUnsubscribeError(ws) {
+    var frame = "ERROR\n"
+        + "content-type:text/plain\n"
+        + "message:malformed unsubscribe message\n"
+        + "\n"
+        + "An unsubscribe frame should look like this :\n"
+        + "UNSUBSCRIBE\n"
+        + "id:0\n"
+        + "\n"
+        + "^@";
+    ws.send(frame);
+}
+function getMessage(ws, lines) {
+    var _a, _b, _c, _d, _e;
+    var result = [];
+    for (var i = 0; i <= lines.length; i++) {
+        if (!((_a = lines[i]) === null || _a === void 0 ? void 0 : _a.toString().includes("SEND")) && !((_b = lines[i]) === null || _b === void 0 ? void 0 : _b.toString().includes("destination")) && !((_c = lines[i]) === null || _c === void 0 ? void 0 : _c.toString().includes("content-type")) && !((_d = lines[i]) === null || _d === void 0 ? void 0 : _d.toString().includes("^@")) && !((_e = lines[i]) === null || _e === void 0 ? void 0 : _e.toString().includes("username"))) {
+            result.push(lines[i]);
+        }
+    }
+    var realResult = result.join(' ');
+    return realResult;
+}
+wss.on('connection', function (ws, req) {
+    console.log("New client connected with ip : " + req.socket.remoteAddress);
+    ws.on('message', function (message) {
+        if (message.toString().startsWith('SUBSCRIBE')) {
+            var stringReq = Str(message).lines();
+            var location_1 = getQueueSubscribe(stringReq);
+            if (error(ws, message, location_1))
+                subscription(ws, message, location_1, stringReq[1].replace('id:', ''));
+        }
+        if (message.toString().startsWith('UNSUBSCRIBE')) {
+            var location_2 = getQueue(Str(message).lines());
+            if (error(ws, message, location_2))
+                unsubscribe(ws, message, location_2);
+        }
+        if (message.toString().startsWith('SEND')) {
+            var location_3 = getQueueSend(Str(message).lines());
+            var stringMessage = message.toString();
+            var type = getType(Str(message).lines());
+            var messageToSend = getMessage(ws, Str(message).lines());
+            var username = getUsernameMessage(Str(message).lines());
+            if (error(ws, message, location_3))
+                sendMessage(ws, stringMessage, location_3, type, messageToSend, username);
+        }
+        if (message.toString().startsWith('DISCONNECT')) {
+            var receipt_id = getReceiptId(message);
+            if (ws) {
+                var frame = "RECEIPT\n"
+                    + "receipt-id:".concat(receipt_id)
+                    + "^@";
+                ws.send(frame);
+                disconnect(ws);
+            }
+        }
+        if (message.toString().startsWith('STOMP')) {
+            var version = getVersion(Str(message).lines());
+            var username = getUsername(Str(message).lines());
+            var password = getPassword(Str(message).lines());
+            var location = "";
+            if (error(ws, message, location) && username != "" && password != "") {
+                sendConnect(ws, version);
+            }
+        }
+    });
+});
 function getQueue(lines) {
     if (lines[0] == 'SEND') {
         return lines[1].replace('destination:', '');
@@ -174,57 +317,9 @@ function getPassword(lines) {
 function getUnsubscribeId(lines) {
     return lines[1].toString().replace('id:', '');
 }
-function getMessage(ws, lines) {
-    var _a, _b, _c, _d;
-    var result = [];
-    for (var i = 0; i <= lines.length; i++) {
-        if (!((_a = lines[i]) === null || _a === void 0 ? void 0 : _a.toString().includes("SEND")) && !((_b = lines[i]) === null || _b === void 0 ? void 0 : _b.toString().includes("destination")) && !((_c = lines[i]) === null || _c === void 0 ? void 0 : _c.toString().includes("content-type")) && !((_d = lines[i]) === null || _d === void 0 ? void 0 : _d.toString().includes("^@"))) {
-            result.push(lines[i]);
-        }
-    }
-    var realResult = result.join(' ');
-    return realResult;
+function getUsernameMessage(lines) {
+    return lines[3].toString().replace('username:', '');
 }
-wss.on('connection', function (ws, req) {
-    console.log("New client connected with ip : " + req.socket.remoteAddress);
-    ws.on('message', function (message) {
-        if (message.toString().startsWith('SUBSCRIBE')) {
-            var stringReq = Str(message).lines();
-            var location_1 = getQueueSubscribe(stringReq);
-            if (error(ws, message, location_1))
-                subscription(ws, message, location_1, stringReq[1].replace('id:', ''));
-        }
-        if (message.toString().startsWith('UNSUBSCRIBE')) {
-            /**
-             * Supprimer le client connecté en vérifiant que l'id est le même
-             */
-            var location_2 = getQueue(Str(message).lines());
-            if (error(ws, message, location_2))
-                unsubscribe(ws, message, location_2);
-        }
-        if (message.toString().startsWith('SEND')) {
-            var location_3 = getQueueSend(Str(message).lines());
-            var stringMessage = message.toString();
-            var type = getType(Str(message).lines());
-            var messageToSend = getMessage(ws, Str(message).lines());
-            if (error(ws, message, location_3))
-                sendMessage(ws, stringMessage, location_3, type, messageToSend);
-        }
-        if (message.toString().startsWith('DISCONNECT')) {
-            var receipt_id = getReceiptId(message);
-            if (ws)
-                disconnect(ws);
-        }
-        if (message.toString().startsWith('STOMP')) {
-            var version = getVersion(Str(message).lines());
-            var username = getUsername(Str(message).lines());
-            var password = getPassword(Str(message).lines());
-            if (version.includes('1.2') && username != "" && password != "") {
-                sendConnect(ws, version);
-            }
-        }
-    });
-});
 server.listen(process.env.PORT || 8999, function () {
     console.log("Server started on port 8999 :)");
 });
