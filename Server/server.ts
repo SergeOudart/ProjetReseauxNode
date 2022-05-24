@@ -78,7 +78,7 @@ function error(ws, message, queue){
             verifFrame = msg[1].includes("destination:") && listChatDispo.includes(queue) && msg[2].toString() == "content-type:text/plain" && message.toString().includes("^@");
         break;
 
-        case "SUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
+        case "SUBSCRIBE":
             verifFrame = msg[1].includes("id:") && msg[2].includes("destination:") && listChatDispo.includes(queue) && message.toString().includes("^@");
             if (!verifFrame) {
                 sendSubscribeError(ws);
@@ -86,7 +86,7 @@ function error(ws, message, queue){
             }
         break;
 
-        case "UNSUBSCRIBE": //TODO Vérifier que le nombre après id: n'est pas vide
+        case "UNSUBSCRIBE":
             if (msg[1].includes("id:")) {
                 var id = msg[1].replace("id:", "");
             }
