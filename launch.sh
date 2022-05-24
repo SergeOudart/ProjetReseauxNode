@@ -1,2 +1,2 @@
-open ./Client/index.html
+browse ./Client/index.html
 node Server/server.js
