@@ -49,6 +49,12 @@ socket.addEventListener('message', (event) => {
             document.getElementById("chat3").style.display = "block";
         }
     }
+    if (event.data.includes('RECEIPT')){
+        socket.close();
+        connected = false;
+        document.getElementById("connect").innerHTML = "Déconnecté";
+
+    }
 });
 
 /*socket.addEventListener('close', function(event){
@@ -139,6 +145,15 @@ function traitementMessage(message) {
                 break;
         }
     }
+}
+
+function disconnect(){
+    var receipt = Math.floor(Math.random() * 1000);
+    var frame = "DISCONNECT\n"
+    + `receipt:${receipt}\n`
+    + `\n`
+    + "^@";
+    socket.send(frame);
 }
 
 function unsubscribe() {
